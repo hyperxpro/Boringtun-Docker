@@ -1,19 +1,21 @@
-# Use the official Rust image to build the project
-FROM rust:latest as builder
+FROM alpine:latest AS build
 
-# Install boringtun-cli using cargo
-RUN cargo install boringtun-cli
+RUN \
+ echo "***** install cargo ****" && \
+ apk add cargo && \
+ echo "***** install boringtun via cargo ****" && \
+ cargo install boringtun-cli 
 
-# Use a minimal base image
-FROM debian:bookworm-slim
+FROM alpine:latest
 
-# Copy the built binary from the builder stage
-COPY --from=builder /usr/local/cargo/bin/boringtun-cli /usr/local/bin/boringtun
+# add local files
+COPY --from=build /root/.cargo/bin/boringtun-cli /data/boringtun
 
-# Install dependencies
-RUN apt-get update && \
-    apt-get install -y iproute2 wireguard-tools iputils-ping iptables && \
-    apt-get clean
+RUN \
+ echo "***** install ip mgmt tools *****" && \
+ apk add --no-cache wireguard-tools iproute2 libgcc && \
+ echo "**** cleanup ****" && \
+ rm -rf /tmp/* /var/tmp/*
 
 # Set environment variables for wg-quick
 ENV WG_QUICK_USERSPACE_IMPLEMENTATION=boringtun
